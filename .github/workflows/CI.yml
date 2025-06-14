@@ -1,36 +1,58 @@
 name: CI
+
 on:
   push:
-    branches: 
+    branches:
       - master
-    tags: '*'
   pull_request:
+    branches:
+      - master
+
 jobs:
   test:
-    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        version:
-          - '1.6'
-        os:
-          # - ubuntu-latest
-          - macOS-latest
-          # - windows-latest
-        arch:
-          - x64
+    name: Run tests and upload coverage
+    runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v1
-
-      - uses: julia-actions/setup-julia@latest
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
+          fetch-depth: 2
 
-      - uses: julia-actions/julia-runtest@latest
+      - name: Set up Julia
+        uses: julia-actions/setup-julia@v1
+        with:
+          version: '1.9'
 
-      - name: Upload coverage reports to Codecov
+      - name: Cache Julia packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.julia/artifacts
+          key: ${{ runner.os }}-julia-artifacts-${{ hashFiles('**/Project.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-julia-artifacts-
+
+      - name: Install dependencies
+        run: |
+          julia --project -e '
+            using Pkg
+            Pkg.instantiate()
+            Pkg.add("Coverage")
+            Pkg.resolve()
+          '
+
+      - name: Run Tests
+        run: |
+          julia --project -e '
+            using Pkg
+            Pkg.test(coverage=true)
+            using Coverage
+            LCOV.writefile("lcov.info", process_folder("."))
+          '
+
+      - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: Aero-Spec/RoombaPOMDPs.jl
+          files: lcov.info
