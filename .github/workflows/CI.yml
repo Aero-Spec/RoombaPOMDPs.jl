@@ -12,18 +12,21 @@ jobs:
     strategy:
       matrix:
         version:
-          - '1.9'  # updated from 1.6 to 1.9
+          - '1.9'
         os:
           - macOS-latest
         arch:
           - x64
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v3
 
-      - uses: julia-actions/setup-julia@latest
+      - uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
+
+      - name: Show Julia version
+        run: julia --version
 
       - name: Install dependencies
         run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
