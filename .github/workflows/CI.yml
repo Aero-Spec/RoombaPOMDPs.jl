@@ -32,9 +32,13 @@ jobs:
         run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
 
       - name: Run tests with coverage
-        run: julia --project=. --code-coverage=lcov -e 'using Pkg; Pkg.test()'
+        run: julia --project=. --code-coverage=all -e 'using Pkg; Pkg.test(coverage=true)'
+
+      - name: Generate LCOV file
+        run: julia --project=. -e 'using Coverage; LCOV.writefile("lcov.info", process_folder("coverage"))'
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
           slug: Aero-Spec/RoombaPOMDPs.jl
+          files: lcov.info
