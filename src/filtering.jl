@@ -7,6 +7,8 @@ Fields:
 - `v_noise_coeff::Float64` coefficient to scale particle-propagation noise in velocity
 - `om_noise_coeff::Float64`coefficient to scale particle-propagation noise in turn-rate
 """
+using ParticleFilters: resample_random!, resample, WeightedParticleBelief, particles
+
 mutable struct RoombaParticleFilter{M<:RoombaModel,RM,RNG<:AbstractRNG,PMEM} <: Updater
     model::M
     resampler::RM
