@@ -9,10 +9,15 @@ Fields:
 - `om_noise_coeff::Float64` coefficient to scale particle-propagation noise in turn-rate
 """
 
-import ParticleFilters: resample_random!, resample, WeightedParticleBelief
+# filtering.jl
 
+import ParticleFilters
 
-mutable struct RoombaParticleFilter{M<:RoombaModel,RM,RNG<:AbstractRNG,PMEM} <: Updater
+const resample_random! = ParticleFilters.resample_random!
+const resample = ParticleFilters.resample
+const WeightedParticleBelief = ParticleFilters.WeightedParticleBelief
+
+mutable struct RoombaParticleFilter{M<:RoombaModel, RM, RNG<:AbstractRNG, PMEM} <: Updater
     model::M
     resampler::RM
     n_init::Int
@@ -23,18 +28,16 @@ mutable struct RoombaParticleFilter{M<:RoombaModel,RM,RNG<:AbstractRNG,PMEM} <: 
     _weight_memory::Vector{Float64}
 end
 
-using ParticleFilters: resample_random!
-
-function RoombaParticleFilter(model, n, v_noise_coeff, om_noise_coeff, resampler=resample_random!, rng=Random.GLOBAL_RNG)
+function RoombaParticleFilter(model, n, v_noise_coeff, om_noise_coeff;
+                              resampler=resample_random!, rng=Random.GLOBAL_RNG)
     return RoombaParticleFilter(model,
                                 resampler,
                                 n,
                                 v_noise_coeff,
                                 om_noise_coeff,
                                 rng,
-                                sizehint!(particle_memory(model), n),
-                                sizehint!(Float64[], n)
-                               )
+                                Vector{typeof(model)}(undef, n),
+                                Vector{Float64}(undef, n))
 end
 
 # Modified Update function adds noise to the actions that propagate particles
