@@ -1,6 +1,8 @@
 module RoombaPOMDPs
 
 using POMDPs
+import POMDPs: initialize_belief   # ✅ Required to extend initialize_belief
+
 using Distributions
 using StaticArrays
 using Parameters
@@ -10,7 +12,6 @@ using Graphics
 using Cairo
 using Random
 import ParticleFilters
-
 import POMDPTools: render
 
 export
