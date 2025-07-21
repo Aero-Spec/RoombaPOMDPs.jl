@@ -3,11 +3,14 @@
 
 """
 Definition of the particle filter for the Roomba environment
+
 Fields:
 - `v_noise_coeff::Float64` coefficient to scale particle-propagation noise in velocity
 - `om_noise_coeff::Float64` coefficient to scale particle-propagation noise in turn-rate
 """
+
 import ParticleFilters: resample_random!, resample, WeightedParticleBelief
+
 
 mutable struct RoombaParticleFilter{M<:RoombaModel,RM,RNG<:AbstractRNG,PMEM} <: Updater
     model::M
