@@ -1,7 +1,7 @@
 # specification of particle filters for the bumper and lidar Roomba environments
 # maintained by {jmorton2,kmenda}@stanford.edu
 
-using ParticleFilters: LowVarianceResampler, ParticleCollection, WeightedParticleBelief, resample, initialize_belief
+using ParticleFilters: LowVarianceResampler, ParticleCollection, WeightedParticleBelief, initialize_belief
 using Random
 using StaticArrays
 
@@ -56,12 +56,14 @@ function POMDPs.update(up::RoombaParticleFilter, b::ParticleCollection, a, o)
         error("Particle filter update error: all states in the particle collection were terminal.")
     end
 
-    return resample(up.resampler,
-                    WeightedParticleBelief(pm, wm, sum(wm), nothing),
-                    up.model,
-                    up.model,
-                    b, a, o,
-                    up.rng)
+    return ParticleFilters.resample(  # FULLY QUALIFIED
+        up.resampler,
+        WeightedParticleBelief(pm, wm, sum(wm), nothing),
+        up.model,
+        up.model,
+        b, a, o,
+        up.rng
+    )
 end
 
 # initialize belief state
