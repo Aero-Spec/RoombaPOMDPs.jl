@@ -1,7 +1,7 @@
 # specification of particle filters for the bumper and lidar Roomba environments
 # maintained by {jmorton2,kmenda}@stanford.edu
 
-using ParticleFilters: LowVarianceResampler, ParticleCollection, WeightedParticleBelief, initialize_belief
+using ParticleFilters: LowVarianceResampler, ParticleCollection, WeightedParticleBelief
 using Random
 using StaticArrays
 
@@ -24,14 +24,14 @@ end
 
 function RoombaParticleFilter(model, n::Integer, v_noise_coeff, om_noise_coeff, resampler=LowVarianceResampler(n), rng::AbstractRNG=Random.GLOBAL_RNG)
     return RoombaParticleFilter(model,
-                               resampler,
-                               n,
-                               v_noise_coeff,
-                               om_noise_coeff,
-                               rng,
-                               sizehint!(particle_memory(model), n),
-                               sizehint!(Float64[], n)
-                              )
+                                resampler,
+                                n,
+                                v_noise_coeff,
+                                om_noise_coeff,
+                                rng,
+                                sizehint!(particle_memory(model), n),
+                                sizehint!(Float64[], n)
+                               )
 end
 
 # Modified Update function adds noise to the actions that propagate particles
@@ -51,12 +51,11 @@ function POMDPs.update(up::RoombaParticleFilter, b::ParticleCollection, a, o)
             push!(wm, obs_weight(up.model, s, a_pert, sp, o))
         end
     end
-    # if all particles are terminal, issue an error
     if all_terminal
         error("Particle filter update error: all states in the particle collection were terminal.")
     end
 
-    return ParticleFilters.resample(  # FULLY QUALIFIED
+    return ParticleFilters.resample(  # fully qualified
         up.resampler,
         WeightedParticleBelief(pm, wm, sum(wm), nothing),
         up.model,
@@ -66,5 +65,7 @@ function POMDPs.update(up::RoombaParticleFilter, b::ParticleCollection, a, o)
     )
 end
 
-# initialize belief state
-initialize_belief(up::RoombaParticleFilter, d) = ParticleCollection([rand(up.rng, d) for _ in 1:up.n_init])
+# Initialize belief state (extension of POMDPs.initialize_belief)
+function initialize_belief(up::RoombaParticleFilter, d)
+    return ParticleCollection([rand(up.rng, d) for _ in 1:up.n_init])
+end
