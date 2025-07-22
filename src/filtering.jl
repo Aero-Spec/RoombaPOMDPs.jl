@@ -23,8 +23,11 @@ mutable struct RoombaParticleFilter{M<:RoombaModel,RM,RNG<:AbstractRNG,PMEM} <: 
 end
 
 function RoombaParticleFilter(model, n::Integer, v_noise_coeff, om_noise_coeff, resampler=LowVarianceResampler(n), rng::AbstractRNG=Random.GLOBAL_RNG)
-    pmem = sizehint!(Vector{typeof(rand(rng, model))}(), n)
-    wmem = sizehint!(Float64[], n)
+    # Initialize with untyped particles — actual particle types determined during belief init
+    pmem = Vector{Any}(undef, 0)
+    wmem = Vector{Float64}(undef, 0)
+    sizehint!(pmem, n)
+    sizehint!(wmem, n)
     return RoombaParticleFilter(model, resampler, n, v_noise_coeff, om_noise_coeff, rng, pmem, wmem)
 end
 
@@ -49,7 +52,7 @@ function POMDPs.update(up::RoombaParticleFilter, b::ParticleCollection, a, o)
         error("Particle filter update error: all states in the particle collection were terminal.")
     end
 
-    return ParticleFilters.resample(  # fully qualified
+    return ParticleFilters.resample(
         up.resampler,
         WeightedParticleBelief(pm, wm, sum(wm), nothing),
         up.model,
@@ -59,7 +62,7 @@ function POMDPs.update(up::RoombaParticleFilter, b::ParticleCollection, a, o)
     )
 end
 
-# Initialize belief state (extension of POMDPs.initialize_belief)
-function initialize_belief(up::RoombaParticleFilter, d)
+# initialize belief state
+function POMDPs.initialize_belief(up::RoombaParticleFilter, d)
     return ParticleCollection([rand(up.rng, d) for _ in 1:up.n_init])
 end
