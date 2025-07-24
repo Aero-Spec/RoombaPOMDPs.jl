@@ -1,7 +1,7 @@
 # specification of particle filters for the bumper and lidar Roomba environments
 # maintained by {jmorton2,kmenda}@stanford.edu
 
-using ParticleFilters: LowVarianceResampler, ParticleCollection, WeightedParticleBelief, particles
+using ParticleFilters: resample, LowVarianceResampler, ParticleCollection, WeightedParticleBelief, particles
 using Random
 using StaticArrays
 
