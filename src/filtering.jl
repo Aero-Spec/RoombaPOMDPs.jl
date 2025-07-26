@@ -1,6 +1,4 @@
-using ParticleFilters: LowVarianceResampler, WeightedParticleBelief, resample
-
-# Any comments you want
+using ParticleFilters: LowVarianceResampler, WeightedParticleBelief
 
 """
 Definition of the particle filter for the Roomba environment
