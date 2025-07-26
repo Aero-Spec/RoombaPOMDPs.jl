@@ -1,13 +1,13 @@
-# specification of particle filters for the bumper and lidar Roomba environments
-# maintained by {jmorton2,kmenda}@stanford.edu
+using ParticleFilters: LowVarianceResampler, WeightedParticleBelief, resample
+
+# Any comments you want
 
 """
 Definition of the particle filter for the Roomba environment
 Fields:
 - `v_noise_coeff::Float64` coefficient to scale particle-propagation noise in velocity
-- `om_noise_coeff::Float64`coefficient to scale particle-propagation noise in turn-rate
+- `om_noise_coeff::Float64` coefficient to scale particle-propagation noise in turn-rate
 """
-using ParticleFilters: LowVarianceResampler, WeightedParticleBelief, resample
 
 mutable struct RoombaParticleFilter{M<:RoombaModel,RM,RNG<:AbstractRNG,PMEM} <: Updater
     model::M
