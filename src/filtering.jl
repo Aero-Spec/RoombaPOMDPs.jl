@@ -52,7 +52,7 @@ function POMDPs.update(up::RoombaParticleFilter, b::ParticleCollection, a, o)
         error("Particle filter update error: all states in the particle collection were terminal.")
     end
 
-    return ParticleFilters.resample(
+    return resample(
         up.resampler,
         WeightedParticleBelief(pm, wm, sum(wm), nothing),
         up.model,
