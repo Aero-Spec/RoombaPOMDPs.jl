@@ -31,13 +31,13 @@ function RoombaParticleFilter(model, n::Integer, v_noise_coeff, om_noise_coeff, 
 end
 
 # Modified Update function adds noise to the actions that propagate particles
-function POMDPs.update(up::RoombaParticleFilter, b::ParticleCollection, a, o)
+function POMDPs.update(up::RoombaParticleFilter, b::Vector{RoombaState}, a, o)
     pm = up._particle_memory
     wm = up._weight_memory
     empty!(pm)
     empty!(wm)
     all_terminal = true
-    for s in particles(b)
+    for s in b
         if !isterminal(up.model, s)
             all_terminal = false
             # noise added here:
@@ -61,4 +61,4 @@ function POMDPs.update(up::RoombaParticleFilter, b::ParticleCollection, a, o)
 end
 
 # initialize belief state
-ParticleFilters.initialize_belief(up::RoombaParticleFilter, d) = ParticleCollection([rand(up.rng, d) for i in 1:up.n_init])
+ParticleFilters.initialize_belief(up::RoombaParticleFilter, d) = [rand(up.rng, d) for i in 1:up.n_init]
