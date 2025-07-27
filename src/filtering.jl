@@ -7,6 +7,7 @@ Fields:
 - `om_noise_coeff::Float64` coefficient to scale particle-propagation noise in turn-rate
 """
 
+# Returns a vector of the correct state type for your Roomba model.
 function particle_memory(model)
     Vector{RoombaState}()
 end
@@ -22,16 +23,20 @@ mutable struct RoombaParticleFilter{M<:RoombaModel,RM,RNG<:AbstractRNG,PMEM} <: 
     _weight_memory::Vector{Float64}
 end
 
-function RoombaParticleFilter(model, n::Integer, v_noise_coeff, om_noise_coeff, resampler=LowVarianceResampler(n), rng::AbstractRNG=Random.GLOBAL_RNG)
-    return RoombaParticleFilter(model,
-                               resampler,
-                               n,
-                               v_noise_coeff,
-                               om_noise_coeff,
-                               rng,
-                               sizehint!(particle_memory(model), n),
-                               sizehint!(Float64[], n)
-                              )
+function RoombaParticleFilter(
+    model, n::Integer, v_noise_coeff, om_noise_coeff, 
+    resampler=LowVarianceResampler(n), rng::AbstractRNG=Random.GLOBAL_RNG
+)
+    return RoombaParticleFilter(
+        model,
+        resampler,
+        n,
+        v_noise_coeff,
+        om_noise_coeff,
+        rng,
+        sizehint!(particle_memory(model), n),
+        sizehint!(Float64[], n)
+    )
 end
 
 # Modified Update function adds noise to the actions that propagate particles
@@ -56,20 +61,15 @@ function POMDPs.update(up::RoombaParticleFilter, b::Vector{RoombaState}, a, o)
         error("Particle filter update error: all states in the particle collection were terminal.")
     end
 
-    return ParticleFilters.resample(up.resampler,
-                    WeightedParticleBelief(pm, wm, sum(wm), nothing),
-                    up.model,
-                    up.model,
-                    b, a, o,
-                    up.rng)
+    return ParticleFilters.resample(
+        up.resampler,
+        WeightedParticleBelief(pm, wm, sum(wm), nothing),
+        up.model,
+        up.model,
+        b, a, o,
+        up.rng
+    )
 end
 
 # initialize belief state
 ParticleFilters.initialize_belief(up::RoombaParticleFilter, d) = [rand(up.rng, d) for i in 1:up.n_init]
-
-# ---- Add this at the end of your file ----
-# Replace 1 with the appropriate action for your task if needed
-
-function POMDPs.action(p::ToEnd, b::Vector{RoombaState})
-    return 1
-end
