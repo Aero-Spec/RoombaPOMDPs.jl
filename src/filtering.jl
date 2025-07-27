@@ -66,3 +66,10 @@ end
 
 # initialize belief state
 ParticleFilters.initialize_belief(up::RoombaParticleFilter, d) = [rand(up.rng, d) for i in 1:up.n_init]
+
+# ---- Add this at the end of your file ----
+# Replace 1 with the appropriate action for your task if needed
+
+function POMDPs.action(p::ToEnd, b::Vector{RoombaState})
+    return 1
+end
