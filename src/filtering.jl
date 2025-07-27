@@ -7,6 +7,10 @@ Fields:
 - `om_noise_coeff::Float64` coefficient to scale particle-propagation noise in turn-rate
 """
 
+function particle_memory(model)
+    Vector{RoombaState}()
+end
+
 mutable struct RoombaParticleFilter{M<:RoombaModel,RM,RNG<:AbstractRNG,PMEM} <: Updater
     model::M
     resampler::RM
