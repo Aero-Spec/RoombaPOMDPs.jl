@@ -26,10 +26,8 @@ end
 # extract goal for heuristic controller
 goal_xy = get_goal_xy(m)
 
-# define a new function that takes in the policy struct and current belief,
-# and returns the desired action
+# action method for ParticleCollection
 function POMDPs.action(p::ToEnd, b::ParticleCollection{RoombaState})
-    
     # spin around to localize for the first 25 time-steps
     if p.ts < 25
         p.ts += 1
@@ -39,25 +37,21 @@ function POMDPs.action(p::ToEnd, b::ParticleCollection{RoombaState})
 
     # after 25 time-steps, we follow a proportional controller to navigate
     # directly to the goal, using the mean belief state
-    
-    # compute mean belief of a subset of particles
     s = mean(b)
-    
-    # compute the difference between our current heading and one that would
-    # point to the goal
     goal_x, goal_y = goal_xy
-    x,y,th = s[1:3]
+    x, y, th = s[1:3]
     ang_to_goal = atan(goal_y - y, goal_x - x)
     del_angle = wrap_to_pi(ang_to_goal - th)
-    
-    # apply proportional control to compute the turn-rate
     Kprop = 1.0
     om = Kprop * del_angle
-    
-    # always travel at some fixed velocity
     v = 5.0
-    
     return RoombaAct(v, om)
+end
+
+# fallback action method for Vector{RoombaState}
+function POMDPs.action(p::ToEnd, b::Vector{RoombaState})
+    # fallback: always rotate in place
+    return RoombaAct(0., 1.0)
 end
 
 # run simulation
@@ -66,11 +60,11 @@ Random.seed!(0)
 
 p = ToEnd(0)
 
-for step in stepthrough(m,p,belief_updater, max_steps=100)
+for step in stepthrough(m, p, belief_updater, max_steps=100)
     @show step.a
 end
 
-step = first(stepthrough(m,p,belief_updater, max_steps=100))
+step = first(stepthrough(m, p, belief_updater, max_steps=100))
 
 @show fbase = tempname()
 
@@ -89,6 +83,6 @@ m = RoombaPOMDP(sensor=sensor, mdp=RoombaMDP(config=config, aspace=vec([RoombaAc
 
 belief_updater = RoombaParticleFilter(m, num_particles, v_noise_coefficient, om_noise_coefficient)
 
-for step in stepthrough(m,RandomPolicy(m),belief_updater, max_steps=100)
+for step in stepthrough(m, RandomPolicy(m), belief_updater, max_steps=100)
     @show convert_s(RoombaState, step.s, m), step.a, step.o, step.r
 end
