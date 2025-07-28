@@ -48,8 +48,8 @@ function POMDPs.action(p::ToEnd, b::ParticleCollection{RoombaState})
     return RoombaAct(v, om)
 end
 
-# fallback action method for Vector{RoombaState}
-function POMDPs.action(p::ToEnd, b::Vector{RoombaState})
+# fallback action method for Vector (catches any vector element type)
+function POMDPs.action(p::ToEnd, b::Vector)
     # fallback: always rotate in place
     return RoombaAct(0., 1.0)
 end
