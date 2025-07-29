@@ -1,4 +1,4 @@
-using ParticleFilters: LowVarianceResampler, WeightedParticleBelief, resample
+using ParticleFilters: LowVarianceResampler, WeightedParticleBelief
 
 """
 Definition of the particle filter for the Roomba environment
@@ -61,14 +61,8 @@ function POMDPs.update(up::RoombaParticleFilter, b::Vector{RoombaState}, a, o)
         error("Particle filter update error: all states in the particle collection were terminal.")
     end
 
-    return resample(
-        up.resampler,
-        WeightedParticleBelief(pm, wm, sum(wm), nothing),
-        up.model,
-        up.model,
-        b, a, o,
-        up.rng
-    )
+    # ParticleFilters v0.6+ just return the weighted belief, resampling is handled elsewhere.
+    return WeightedParticleBelief(pm, wm, sum(wm), nothing)
 end
 
 # initialize belief state
