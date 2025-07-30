@@ -7,7 +7,6 @@ Fields:
 - `om_noise_coeff::Float64` coefficient to scale particle-propagation noise in turn-rate
 """
 
-# Returns a vector of the correct state type for your Roomba model.
 function particle_memory(model)
     Vector{RoombaState}()
 end
@@ -39,7 +38,6 @@ function RoombaParticleFilter(
     )
 end
 
-# Modified Update function adds noise to the actions that propagate particles
 function POMDPs.update(up::RoombaParticleFilter, b::Vector{RoombaState}, a, o)
     pm = up._particle_memory
     wm = up._weight_memory
@@ -49,21 +47,17 @@ function POMDPs.update(up::RoombaParticleFilter, b::Vector{RoombaState}, a, o)
     for s in b
         if !isterminal(up.model, s)
             all_terminal = false
-            # noise added here:
             a_pert = a + SVec2(up.v_noise_coeff * (rand(up.rng) - 0.5), up.om_noise_coeff * (rand(up.rng) - 0.5))
             sp = @gen(:sp)(up.model, s, a_pert, up.rng)
             push!(pm, sp)
             push!(wm, obs_weight(up.model, s, a_pert, sp, o))
         end
     end
-    # if all particles are terminal, issue an error
     if all_terminal
         error("Particle filter update error: all states in the particle collection were terminal.")
     end
 
-    # ParticleFilters v0.6+ just return the weighted belief, resampling is handled elsewhere.
-    return WeightedParticleBelief(pm, wm, sum(wm), nothing)
+    return WeightedParticleBelief(pm, wm)
 end
 
-# initialize belief state
 ParticleFilters.initialize_belief(up::RoombaParticleFilter, d) = [rand(up.rng, d) for i in 1:up.n_init]
