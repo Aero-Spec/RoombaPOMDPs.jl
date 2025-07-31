@@ -1,4 +1,5 @@
 using ParticleFilters: LowVarianceResampler, WeightedParticleBelief
+import POMDPTools: action
 
 """
 Definition of the particle filter for the Roomba environment
@@ -61,3 +62,22 @@ function POMDPs.update(up::RoombaParticleFilter, b::Vector{RoombaState}, a, o)
 end
 
 ParticleFilters.initialize_belief(up::RoombaParticleFilter, d) = [rand(up.rng, d) for i in 1:up.n_init]
+
+# --- POLICY/CONTROL FALLBACKS ---
+
+# Policy type placeholder (make sure this matches your actual type elsewhere)
+struct ToEnd end
+
+# Example: Define action for ToEnd given a RoombaState.
+function action(p::ToEnd, s::RoombaState)
+    # TODO: Replace with actual logic for your robot.
+    # Example: Stop moving.
+    return RoombaAct(0.0, 0.0)
+end
+
+# Define action for ToEnd given a WeightedParticleBelief.
+function action(p::ToEnd, b::WeightedParticleBelief{RoombaState})
+    idx = argmax(b.weights)
+    s = b.particles[idx]
+    return action(p, s)
+end
