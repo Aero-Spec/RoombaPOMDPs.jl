@@ -1,12 +1,5 @@
 using ParticleFilters: LowVarianceResampler, WeightedParticleBelief
 
-"""
-Definition of the particle filter for the Roomba environment
-Fields:
-- `v_noise_coeff::Float64` coefficient to scale particle-propagation noise in velocity
-- `om_noise_coeff::Float64` coefficient to scale particle-propagation noise in turn-rate
-"""
-
 function particle_memory(model)
     Vector{RoombaState}()
 end
@@ -74,5 +67,5 @@ end
 function POMDPTools.action(p::ToEnd, b::WeightedParticleBelief{RoombaState})
     idx = argmax(b.weights)
     s = b.particles[idx]
-    return POMDPTools.action(p, s)
+    return POMDPTools.action(p, s)   # <--- THIS LINE IS KEY!
 end
