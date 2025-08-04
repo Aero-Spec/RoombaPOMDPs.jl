@@ -1,11 +1,18 @@
 # specification of particle filters for the bumper and lidar Roomba environments
 # maintained by {jmorton2,kmenda}@stanford.edu
 
+# ==== ADD THESE IMPORTS AT THE TOP ====
+using POMDPs
+using StaticArrays: SVec2
+using Random
+using ParticleFilters: ParticleCollection, WeightedParticleBelief, LowVarianceResampler, resample, particles, initialize_belief
+# =======================================
+
 """
 Definition of the particle filter for the Roomba environment
 Fields:
 - `v_noise_coeff::Float64` coefficient to scale particle-propagation noise in velocity
-- `om_noise_coeff::Float64`coefficient to scale particle-propagation noise in turn-rate
+- `om_noise_coeff::Float64` coefficient to scale particle-propagation noise in turn-rate
 """
 mutable struct RoombaParticleFilter{M<:RoombaModel,RM,RNG<:AbstractRNG,PMEM} <: Updater
     model::M
@@ -52,7 +59,7 @@ function POMDPs.update(up::RoombaParticleFilter, b::ParticleCollection, a, o)
         error("Particle filter update error: all states in the particle collection were terminal.")
     end
 
-    return ParticleFilters.resample(up.resampler,
+    return resample(up.resampler,
                     WeightedParticleBelief(pm, wm, sum(wm), nothing),
                     up.model,
                     up.model,
@@ -61,4 +68,6 @@ function POMDPs.update(up::RoombaParticleFilter, b::ParticleCollection, a, o)
 end
 
 # initialize belief state
-ParticleFilters.initialize_belief(up::RoombaParticleFilter, d) = ParticleCollection([rand(up.rng, d) for i in 1:up.n_init])
+function ParticleFilters.initialize_belief(up::RoombaParticleFilter, d)
+    ParticleCollection([rand(up.rng, d) for i in 1:up.n_init])
+end
