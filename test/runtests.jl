@@ -1,4 +1,3 @@
-# import necessary packages
 using RoombaPOMDPs
 using POMDPs
 using POMDPTools
@@ -8,8 +7,9 @@ using Gtk
 using Random
 using Test
 
+# -- Environment setup --
 sensor = Lidar() # or Bumper() for the bumper version of the environment
-config = 3 # 1,2, or 3
+config = 3 # 1, 2, or 3
 m = RoombaPOMDP(sensor=sensor, mdp=RoombaMDP(config=config));
 
 num_particles = 2000
@@ -18,26 +18,24 @@ om_noise_coefficient = 0.5
 
 belief_updater = RoombaParticleFilter(m, num_particles, v_noise_coefficient, om_noise_coefficient)
 
-# Define the policy to test
+# -- Policy definition --
 mutable struct ToEnd <: Policy
-    ts::Int64 # to track the current time-step.
+    ts::Int64
 end
 
-# extract goal for heuristic controller
 goal_xy = get_goal_xy(m)
 
-# action method for ParticleCollection
-function POMDPs.action(p::ToEnd, b::ParticleCollection{RoombaState})
-    # spin around to localize for the first 25 time-steps
+# action for WeightedParticleBelief
+function POMDPTools.action(p::ToEnd, b::WeightedParticleBelief{RoombaState})
     if p.ts < 25
         p.ts += 1
-        return RoombaAct(0.,1.0) # all actions are of type RoombaAct(v,om)
+        return RoombaAct(0., 1.0)
     end
     p.ts += 1
 
-    # after 25 time-steps, we follow a proportional controller to navigate
-    # directly to the goal, using the mean belief state
-    s = mean(b)
+    # go towards goal using MAP estimate
+    idx = argmax(b.weights)
+    s = b.particles[idx]
     goal_x, goal_y = goal_xy
     x, y, th = s[1:3]
     ang_to_goal = atan(goal_y - y, goal_x - x)
@@ -48,16 +46,18 @@ function POMDPs.action(p::ToEnd, b::ParticleCollection{RoombaState})
     return RoombaAct(v, om)
 end
 
-# fallback action method for Vector (catches any vector element type)
-function POMDPs.action(p::ToEnd, b::Vector)
-    # fallback: always rotate in place
+# fallback action for Vector
+function POMDPTools.action(p::ToEnd, b::Vector)
     return RoombaAct(0., 1.0)
 end
 
-# run simulation
+# fallback action for single RoombaState
+function POMDPTools.action(p::ToEnd, s::RoombaState)
+    return RoombaAct(0., 0.)
+end
 
+# -- Simulation --
 Random.seed!(0)
-
 p = ToEnd(0)
 
 for step in stepthrough(m, p, belief_updater, max_steps=100)
@@ -67,7 +67,6 @@ end
 step = first(stepthrough(m, p, belief_updater, max_steps=100))
 
 @show fbase = tempname()
-
 v = render(m, step)
 for (ext, mime) in ["html"=>MIME("text/html"), "svg"=>MIME("image/svg+xml"), "png"=>MIME("image/png")]
     fname = fbase*"."*ext
@@ -77,7 +76,15 @@ for (ext, mime) in ["html"=>MIME("text/html"), "svg"=>MIME("image/svg+xml"), "pn
     @test filesize(fname) > 0
 end
 
-m = RoombaPOMDP(sensor=sensor, mdp=RoombaMDP(config=config, aspace=vec([RoombaAct(v, om) for v in range(0, stop=2, length=2) for om in range(-2, stop=2, length=3)]), sspace=DiscreteRoombaStateSpace(41, 26, 20)));
+# Discrete version test
+m = RoombaPOMDP(
+    sensor=sensor,
+    mdp=RoombaMDP(
+        config=config,
+        aspace=vec([RoombaAct(v, om) for v in range(0, stop=2, length=2) for om in range(-2, stop=2, length=3)]),
+        sspace=DiscreteRoombaStateSpace(41, 26, 20)
+    )
+)
 @test has_consistent_initial_distribution(m)
 @test has_consistent_transition_distributions(m)
 
