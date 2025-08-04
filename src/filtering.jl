@@ -1,12 +1,12 @@
 # specification of particle filters for the bumper and lidar Roomba environments
 # maintained by {jmorton2,kmenda}@stanford.edu
 
-# ==== ADD THESE IMPORTS AT THE TOP ====
 using POMDPs
-using StaticArrays: SVec2
+using StaticArrays
 using Random
 using ParticleFilters: ParticleCollection, WeightedParticleBelief, LowVarianceResampler, resample, particles, initialize_belief
-# =======================================
+
+const SVec2 = SVector{2, Float64}
 
 """
 Definition of the particle filter for the Roomba environment
