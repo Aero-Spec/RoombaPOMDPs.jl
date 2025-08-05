@@ -4,7 +4,7 @@
 using POMDPs
 using StaticArrays
 using Random
-using ParticleFilters: ParticleCollection, WeightedParticleBelief, LowVarianceResampler, resample, particles, initialize_belief
+import ParticleFilters
 
 const SVec2 = SVector{2, Float64}
 
@@ -25,7 +25,7 @@ mutable struct RoombaParticleFilter{M<:RoombaModel,RM,RNG<:AbstractRNG,PMEM} <: 
     _weight_memory::Vector{Float64}
 end
 
-function RoombaParticleFilter(model, n::Integer, v_noise_coeff, om_noise_coeff, resampler=LowVarianceResampler(n), rng::AbstractRNG=Random.GLOBAL_RNG)
+function RoombaParticleFilter(model, n::Integer, v_noise_coeff, om_noise_coeff, resampler=ParticleFilters.LowVarianceResampler(n), rng::AbstractRNG=Random.GLOBAL_RNG)
     return RoombaParticleFilter(model,
                                resampler,
                                n,
@@ -38,13 +38,13 @@ function RoombaParticleFilter(model, n::Integer, v_noise_coeff, om_noise_coeff, 
 end
 
 # Modified Update function adds noise to the actions that propagate particles
-function POMDPs.update(up::RoombaParticleFilter, b::ParticleCollection, a, o)
+function POMDPs.update(up::RoombaParticleFilter, b::ParticleFilters.ParticleCollection, a, o)
     pm = up._particle_memory
     wm = up._weight_memory
     empty!(pm)
     empty!(wm)
     all_terminal = true
-    for s in particles(b)
+    for s in ParticleFilters.particles(b)
         if !isterminal(up.model, s)
             all_terminal = false
             # noise added here:
@@ -59,15 +59,17 @@ function POMDPs.update(up::RoombaParticleFilter, b::ParticleCollection, a, o)
         error("Particle filter update error: all states in the particle collection were terminal.")
     end
 
-    return resample(up.resampler,
-                    WeightedParticleBelief(pm, wm, sum(wm), nothing),
-                    up.model,
-                    up.model,
-                    b, a, o,
-                    up.rng)
+    return ParticleFilters.resample(
+        up.resampler,
+        ParticleFilters.WeightedParticleBelief(pm, wm, sum(wm), nothing),
+        up.model,
+        up.model,
+        b, a, o,
+        up.rng
+    )
 end
 
 # initialize belief state
 function ParticleFilters.initialize_belief(up::RoombaParticleFilter, d)
-    ParticleCollection([rand(up.rng, d) for i in 1:up.n_init])
+    ParticleFilters.ParticleCollection([rand(up.rng, d) for i in 1:up.n_init])
 end
