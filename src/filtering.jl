@@ -8,6 +8,12 @@ import ParticleFilters
 
 const SVec2 = SVector{2, Float64}
 
+# Helper to allocate memory for particle filter, returns empty Vector of state type
+function particle_memory(model)
+    T = typeof(rand(model))
+    return T[]
+end
+
 """
 Definition of the particle filter for the Roomba environment
 Fields:
