@@ -1,6 +1,3 @@
-# specification of particle filters for the bumper and lidar Roomba environments
-# maintained by {jmorton2,kmenda}@stanford.edu
-
 using POMDPs
 using StaticArrays
 using Random
@@ -10,7 +7,7 @@ const SVec2 = SVector{2, Float64}
 
 # Helper to allocate memory for particle filter, returns empty Vector of state type
 function particle_memory(model)
-    T = typeof(rand(model))
+    T = typeof(random_state(model, MersenneTwister(0)))
     return T[]
 end
 
@@ -43,7 +40,6 @@ function RoombaParticleFilter(model, n::Integer, v_noise_coeff, om_noise_coeff, 
                               )
 end
 
-# Modified Update function adds noise to the actions that propagate particles
 function POMDPs.update(up::RoombaParticleFilter, b::ParticleFilters.ParticleCollection, a, o)
     pm = up._particle_memory
     wm = up._weight_memory
@@ -53,14 +49,12 @@ function POMDPs.update(up::RoombaParticleFilter, b::ParticleFilters.ParticleColl
     for s in ParticleFilters.particles(b)
         if !isterminal(up.model, s)
             all_terminal = false
-            # noise added here:
             a_pert = a + SVec2(up.v_noise_coeff * (rand(up.rng) - 0.5), up.om_noise_coeff * (rand(up.rng) - 0.5))
             sp = @gen(:sp)(up.model, s, a_pert, up.rng)
             push!(pm, sp)
             push!(wm, obs_weight(up.model, s, a_pert, sp, o))
         end
     end
-    # if all particles are terminal, issue an error
     if all_terminal
         error("Particle filter update error: all states in the particle collection were terminal.")
     end
@@ -77,5 +71,5 @@ end
 
 # initialize belief state
 function ParticleFilters.initialize_belief(up::RoombaParticleFilter, d)
-    ParticleFilters.ParticleCollection([rand(up.rng, d) for i in 1:up.n_init])
+    ParticleFilters.ParticleCollection([random_state(d, up.rng) for i in 1:up.n_init])
 end
