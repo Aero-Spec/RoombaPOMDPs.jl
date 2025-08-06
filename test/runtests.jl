@@ -46,6 +46,27 @@ function POMDPs.action(p::ToEnd, b::WeightedParticleBelief{RoombaState})
     return RoombaAct(v, om)
 end
 
+# --------- FIXED: Added method for ParticleCollection -------------
+function POMDPs.action(p::ToEnd, b::ParticleCollection{RoombaState})
+    if p.ts < 25
+        p.ts += 1
+        return RoombaAct(0., 1.0)
+    end
+    p.ts += 1
+
+    # Use mean of particles for action
+    s = mean(b)
+    goal_x, goal_y = goal_xy
+    x, y, th = s[1:3]
+    ang_to_goal = atan(goal_y - y, goal_x - x)
+    del_angle = wrap_to_pi(ang_to_goal - th)
+    Kprop = 1.0
+    om = Kprop * del_angle
+    v = 5.0
+    return RoombaAct(v, om)
+end
+# ---------------------------------------------------------------
+
 # fallback action for Vector
 function POMDPs.action(p::ToEnd, b::Vector)
     return RoombaAct(0., 1.0)
