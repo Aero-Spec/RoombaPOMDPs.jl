@@ -26,7 +26,7 @@ end
 goal_xy = get_goal_xy(m)
 
 # action for WeightedParticleBelief
-function POMDPTools.action(p::ToEnd, b::WeightedParticleBelief{RoombaState})
+function POMDPs.action(p::ToEnd, b::WeightedParticleBelief{RoombaState})
     if p.ts < 25
         p.ts += 1
         return RoombaAct(0., 1.0)
@@ -47,12 +47,12 @@ function POMDPTools.action(p::ToEnd, b::WeightedParticleBelief{RoombaState})
 end
 
 # fallback action for Vector
-function POMDPTools.action(p::ToEnd, b::Vector)
+function POMDPs.action(p::ToEnd, b::Vector)
     return RoombaAct(0., 1.0)
 end
 
 # fallback action for single RoombaState
-function POMDPTools.action(p::ToEnd, s::RoombaState)
+function POMDPs.action(p::ToEnd, s::RoombaState)
     return RoombaAct(0., 0.)
 end
 
