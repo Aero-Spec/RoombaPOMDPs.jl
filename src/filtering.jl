@@ -7,11 +7,11 @@ import ParticleFilters
 const SVec2 = SVector{2, Float64}
 
 function random_state(model, rng)
-    return RoombaState((  # NOTE: extra parentheses for a tuple!
+    return RoombaState(
         rand(rng, Distributions.Uniform(-1.0, 1.0)),
         rand(rng, Distributions.Uniform(-1.0, 1.0)),
         rand(rng, Distributions.Uniform(-π, π))
-    ))
+    )
 end
 
 # THIS MUST BE DEFINED BEFORE RoombaParticleFilter
