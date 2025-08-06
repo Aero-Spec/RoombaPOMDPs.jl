@@ -7,14 +7,14 @@ import ParticleFilters
 const SVec2 = SVector{2, Float64}
 
 function random_state(model, rng)
-    return RoombaState(SVector{
-        3, Float64
-    }(
-        rand(rng, Distributions.Uniform(-1.0, 1.0)),
-        rand(rng, Distributions.Uniform(-1.0, 1.0)),
-        rand(rng, Distributions.Uniform(-π, π))
-    ))
+    return RoombaState(
+        rand(rng, Distributions.Uniform(-1.0, 1.0)),   # x
+        rand(rng, Distributions.Uniform(-1.0, 1.0)),   # y
+        rand(rng, Distributions.Uniform(-π, π)),       # th
+        0.0                                            # terminal flag
+    )
 end
+
 
 # THIS MUST BE DEFINED BEFORE RoombaParticleFilter
 function particle_memory(model)
