@@ -14,6 +14,12 @@ function random_state(model, rng)
     )
 end
 
+# THIS MUST BE DEFINED BEFORE RoombaParticleFilter
+function particle_memory(model)
+    T = typeof(random_state(model, MersenneTwister(0)))
+    return T[]
+end
+
 """
 Definition of the particle filter for the Roomba environment
 Fields:
