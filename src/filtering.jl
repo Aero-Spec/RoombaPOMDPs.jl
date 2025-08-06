@@ -8,18 +8,11 @@ const SVec2 = SVector{2, Float64}
 
 function random_state(model, rng)
     return RoombaState(
-        rand(rng, Uniform(-1.0, 1.0)),
-        rand(rng, Uniform(-1.0, 1.0)),
-        rand(rng, Uniform(-π, π))
+        rand(rng, Distributions.Uniform(-1.0, 1.0)),
+        rand(rng, Distributions.Uniform(-1.0, 1.0)),
+        rand(rng, Distributions.Uniform(-π, π))
     )
 end
-
-function particle_memory(model)
-    T = typeof(random_state(model, MersenneTwister(0)))
-    return T[]
-end
-
-# ...rest of your code remains unchanged...
 
 """
 Definition of the particle filter for the Roomba environment
