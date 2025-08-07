@@ -2,7 +2,6 @@ using POMDPs
 using StaticArrays
 using Random
 using Distributions
-import ParticleFilters
 using ParticleFilters: resample
 
 const SVec2 = SVector{2, Float64}
