@@ -1,7 +1,7 @@
 module RoombaPOMDPs
 
 using POMDPs
-import POMDPs: initialize_belief   # Required to extend initialize_belief
+import POMDPs: initialize_belief   # Only if you extend it
 
 using Distributions
 using StaticArrays
@@ -15,6 +15,7 @@ import ParticleFilters
 import POMDPTools: render
 using ParticleFilters: resample
 
+# Export all main API symbols for users of your package
 export
     RoombaState,
     RoombaAct,
@@ -34,9 +35,10 @@ export
     DiscreteRoombaStateSpace,
     render
 
+# Include the submodules/files in the right order (so dependencies are loaded before used)
 include("line_segment_utils.jl")
 include("env_room.jl")
 include("roomba_env.jl")
 include("filtering.jl")
 
-end
+end # module RoombaPOMDPs
