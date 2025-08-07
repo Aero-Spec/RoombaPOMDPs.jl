@@ -13,6 +13,7 @@ using Cairo
 using Random
 import ParticleFilters
 import POMDPTools: render
+using ParticleFilters: resample 
 
 export
     RoombaState,
