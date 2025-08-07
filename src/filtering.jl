@@ -70,7 +70,7 @@ function POMDPs.update(up::RoombaParticleFilter, b::ParticleFilters.ParticleColl
         error("Particle filter update error: all states in the particle collection were terminal.")
     end
 
-    return ParticleFilters.resample(
+        return resample(
         up.resampler,
         ParticleFilters.WeightedParticleBelief(pm, wm, sum(wm), nothing),
         up.model,
@@ -78,7 +78,7 @@ function POMDPs.update(up::RoombaParticleFilter, b::ParticleFilters.ParticleColl
         b, a, o,
         up.rng
     )
-end
+
 
 # initialize belief state
 function ParticleFilters.initialize_belief(up::RoombaParticleFilter, d)
