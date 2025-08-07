@@ -15,19 +15,11 @@ function random_state(model, rng)
     )
 end
 
-
-# THIS MUST BE DEFINED BEFORE RoombaParticleFilter
 function particle_memory(model)
     T = typeof(random_state(model, MersenneTwister(0)))
     return T[]
 end
 
-"""
-Definition of the particle filter for the Roomba environment
-Fields:
-- `v_noise_coeff::Float64` coefficient to scale particle-propagation noise in velocity
-- `om_noise_coeff::Float64` coefficient to scale particle-propagation noise in turn-rate
-"""
 mutable struct RoombaParticleFilter{M<:RoombaModel,RM,RNG<:AbstractRNG,PMEM} <: Updater
     model::M
     resampler::RM
@@ -70,7 +62,7 @@ function POMDPs.update(up::RoombaParticleFilter, b::ParticleFilters.ParticleColl
         error("Particle filter update error: all states in the particle collection were terminal.")
     end
 
-        return resample(
+    return resample(
         up.resampler,
         ParticleFilters.WeightedParticleBelief(pm, wm, sum(wm), nothing),
         up.model,
@@ -78,9 +70,8 @@ function POMDPs.update(up::RoombaParticleFilter, b::ParticleFilters.ParticleColl
         b, a, o,
         up.rng
     )
+end
 
-
-# initialize belief state
 function ParticleFilters.initialize_belief(up::RoombaParticleFilter, d)
     ParticleFilters.ParticleCollection([random_state(d, up.rng) for i in 1:up.n_init])
 end
