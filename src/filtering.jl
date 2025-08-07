@@ -3,7 +3,6 @@ using StaticArrays
 using Random
 using Distributions
 using ParticleFilters: 
-    resample, 
     particles, 
     ParticleCollection, 
     WeightedParticleBelief, 
@@ -85,7 +84,7 @@ function POMDPs.update(up::RoombaParticleFilter, b::ParticleCollection, a, o)
         error("Particle filter update error: all states in the particle collection were terminal.")
     end
 
-    return resample(
+    return ParticleFilters.resample(
         up.resampler,
         WeightedParticleBelief(pm, wm, sum(wm), nothing),
         up.model,
