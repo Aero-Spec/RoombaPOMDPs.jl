@@ -54,7 +54,7 @@ POMDPs.action(::ForwardPolicy, ::Any) = RoombaAct(0.2, 0.0)
         m_dlidar = RoombaPOMDP(sensor=s_disc, mdp=RoombaMDP())
 
         sp = rand(rng2, initialstate(m_dlidar))
-        d = POMDPs.observation(m_dlidar, sp)  # SparseCat over 1:4
+        d  = POMDPs.observation(m_dlidar, sp)  # SparseCat over 1:4
 
         nobs = RoombaPOMDPs.n_observations(m_dlidar)
         @test nobs == length(disc_points) + 1
@@ -64,20 +64,21 @@ POMDPs.action(::ForwardPolicy, ::Any) = RoombaAct(0.2, 0.0)
         @test all(p -> p ≥ 0.0, pdf.(Ref(d), support(d)))
 
         # --- DiscreteLidarPOMDP with DISCRETE state space (Int path) ---
-        # Choose sizes that satisfy x_step==y_step: (num_x_pts-1) = 8/5*(num_y_pts-1).
-        # Example: num_y_pts=6 -> (6-1)=5, so num_x_pts=9.
-        ss_disc = DiscreteRoombaStateSpace(9, 6, 5)
-        mdp_disc = RoombaMDP(sspace=ss_disc)
-        m_dlidar_disc = RoombaPOMDP(sensor=s_disc, mdp=mdp_disc)
+        # Use a fine grid so x_step == y_step is small (keeps ROBOT_W small):
+        # (num_x_pts-1) = 8/5*(num_y_pts-1). Example: num_y_pts=41 -> num_x_pts=65.
+        ss_disc        = DiscreteRoombaStateSpace(65, 41, 17)
+        mdp_disc       = RoombaMDP(sspace=ss_disc)
+        m_dlidar_disc  = RoombaPOMDP(sensor=s_disc, mdp=mdp_disc)
 
-        si = rand(rng2, POMDPs.states(m_dlidar_disc))  # Int state index
-        d2 = POMDPs.observation(m_dlidar_disc, si)
+        si  = rand(rng2, POMDPs.states(m_dlidar_disc))  # Int state index
+        d2  = POMDPs.observation(m_dlidar_disc, si)
         nobs2 = RoombaPOMDPs.n_observations(m_dlidar_disc)
         @test length(support(d2)) == nobs2
         @test isapprox(sum(pdf.(Ref(d2), support(d2))), 1.0; atol=1e-9)
     end
 
     @testset "Particle filter update & resampling" begin
+        # Continuous model should be fine now since ROBOT_W was set small by the fine discrete grid above.
         m = RoombaPOMDP(sensor=Lidar(), mdp=RoombaMDP())
 
         n = 200
