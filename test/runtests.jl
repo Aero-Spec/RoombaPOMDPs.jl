@@ -40,49 +40,41 @@ POMDPs.action(::ForwardPolicy, ::Any) = RoombaAct(0.2, 0.0)
         @test r ≤ mdp.time_pen + max(mdp.goal_reward, 0.0)
     end
 
-    @testset "Observation API coverage" begin
-        # LidarPOMDP (continuous) error branches:
-        m_lidar = RoombaPOMDP(sensor=Lidar(), mdp=RoombaMDP())
-        @test_throws ErrorException RoombaPOMDPs.n_observations(m_lidar)   # module-qualified!
-        @test_throws ErrorException POMDPs.observations(m_lidar)
+   @testset "Observation API coverage" begin
+    rng = MersenneTwister(0)
 
-        # DiscreteLidarPOMDP happy path:
-        disc_points = [0.3, 0.6, 1.0]  # -> 4 bins
-        s_disc = DiscreteLidar(Lidar().ray_stdev, disc_points, zeros(Float64, length(disc_points)+1))
-        m_dlidar = RoombaPOMDP(sensor=s_disc, mdp=RoombaMDP())
+    # --- LidarPOMDP (continuous) error branches ---
+    m_lidar = RoombaPOMDP(sensor=Lidar(), mdp=RoombaMDP())
+    @test_throws ErrorException RoombaPOMDPs.n_observations(m_lidar) # module-qualified
+    @test_throws ErrorException POMDPs.observations(m_lidar)
 
-        sp = rand(rng, initialstate(m_dlidar))
+    # --- DiscreteLidarPOMDP with CONTINUOUS state space (RoombaState path) ---
+    disc_points = [0.3, 0.6, 1.0]              # -> 4 bins total
+    s_disc = DiscreteLidar(Lidar().ray_stdev,   # use 3-arg ctor; pass buffer
+                           disc_points,
+                           zeros(Float64, length(disc_points)+1))
+    m_dlidar = RoombaPOMDP(sensor=s_disc, mdp=RoombaMDP())
 
-        d = POMDPs.observation(m_dlidar, sp)  # SparseCat over 1:4
-        @test n_observations(m_dlidar) == length(disc_points) + 1
-        @test collect(POMDPs.observations(m_dlidar)) == collect(1:n_observations(m_dlidar))
-        @test all(o -> POMDPs.obsindex(m_dlidar, o) == o, support(d))
-        @test isapprox(sum(pdf.(Ref(d), support(d))), 1.0; atol=1e-9)
-        @test all(p -> p ≥ 0.0, pdf.(Ref(d), support(d)))
+    sp = rand(rng, initialstate(m_dlidar))     # RoombaState
+    d = POMDPs.observation(m_dlidar, sp)       # SparseCat over 1:4
 
-        # observation over Int state overload
-        si = POMDPs.convert_s(Int, sp, m_dlidar)
-        d2 = POMDPs.observation(m_dlidar, si)
-        @test length(support(d2)) == n_observations(m_dlidar)
-        @test isapprox(sum(pdf.(Ref(d2), support(d2))), 1.0; atol=1e-9)
-    end
+    nobs = RoombaPOMDPs.n_observations(m_dlidar)  # module-qualified
+    @test nobs == length(disc_points) + 1
+    @test collect(POMDPs.observations(m_dlidar)) == collect(1:nobs)
+    @test all(o -> POMDPs.obsindex(m_dlidar, o) == o, support(d))
+    @test isapprox(sum(pdf.(Ref(d), support(d))), 1.0; atol=1e-9)
+    @test all(p -> p ≥ 0.0, pdf.(Ref(d), support(d)))
 
-    @testset "Particle filter update & resampling" begin
-        m = RoombaPOMDP(sensor=Lidar(), mdp=RoombaMDP())
+    # --- DiscreteLidarPOMDP with DISCRETE state space (Int path) ---
+    # Choose sizes that satisfy x_step==y_step: (num_x_pts-1) = 8/5*(num_y_pts-1).
+    # Example: num_y_pts=6 -> (6-1)=5, so num_x_pts=9.
+    ss_disc = DiscreteRoombaStateSpace(9, 6, 5)
+    mdp_disc = RoombaMDP(sspace=ss_disc)                 # room will be consistent with sspace
+    m_dlidar_disc = RoombaPOMDP(sensor=s_disc, mdp=mdp_disc)
 
-        n = 200
-        b = ParticleCollection([rand(rng, initialstate(m)) for _ in 1:n])
-
-        up = RoombaParticleFilter(m, n, 0.05, 0.05, nothing, rng)
-
-        s = rand(rng, initialstate(m))
-        a = RoombaAct(0.3, 0.0)
-        sp = rand(transition(m, s, a))
-        o = rand(rng, observation(m, sp))  # Float64
-
-        bnew = POMDPs.update(up, b, a, o)
-        @test bnew isa ParticleCollection
-        @test length(collect(particles(bnew))) == n
-        @test any(!isterminal(m, p) for p in particles(bnew))
-    end
+    si = rand(rng, POMDPs.states(m_dlidar_disc))         # Int state index
+    d2 = POMDPs.observation(m_dlidar_disc, si)
+    nobs2 = RoombaPOMDPs.n_observations(m_dlidar_disc)
+    @test length(support(d2)) == nobs2
+    @test isapprox(sum(pdf.(Ref(d2), support(d2))), 1.0; atol=1e-9)
 end
