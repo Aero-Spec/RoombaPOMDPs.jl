@@ -6,7 +6,7 @@ using Distributions
 using ParticleFilters: ParticleCollection, particles
 using RoombaPOMDPs
 
-# Simple always-forward policy (kept around; not used with stepthrough)
+# Simple always-forward policy (not used with stepthrough; kept for possible future tests)
 struct ForwardPolicy end
 POMDPs.action(::ForwardPolicy, ::Any) = RoombaAct(0.2, 0.0)
 
@@ -40,41 +40,60 @@ POMDPs.action(::ForwardPolicy, ::Any) = RoombaAct(0.2, 0.0)
         @test r ≤ mdp.time_pen + max(mdp.goal_reward, 0.0)
     end
 
-   @testset "Observation API coverage" begin
-    rng = MersenneTwister(0)
+    @testset "Observation API coverage" begin
+        rng2 = MersenneTwister(0)
 
-    # --- LidarPOMDP (continuous) error branches ---
-    m_lidar = RoombaPOMDP(sensor=Lidar(), mdp=RoombaMDP())
-    @test_throws ErrorException RoombaPOMDPs.n_observations(m_lidar) # module-qualified
-    @test_throws ErrorException POMDPs.observations(m_lidar)
+        # --- LidarPOMDP (continuous) error branches ---
+        m_lidar = RoombaPOMDP(sensor=Lidar(), mdp=RoombaMDP())
+        @test_throws ErrorException RoombaPOMDPs.n_observations(m_lidar) # defined in module
+        @test_throws ErrorException POMDPs.observations(m_lidar)
 
-    # --- DiscreteLidarPOMDP with CONTINUOUS state space (RoombaState path) ---
-    disc_points = [0.3, 0.6, 1.0]              # -> 4 bins total
-    s_disc = DiscreteLidar(Lidar().ray_stdev,   # use 3-arg ctor; pass buffer
-                           disc_points,
-                           zeros(Float64, length(disc_points)+1))
-    m_dlidar = RoombaPOMDP(sensor=s_disc, mdp=RoombaMDP())
+        # --- DiscreteLidarPOMDP with CONTINUOUS state space (RoombaState path) ---
+        disc_points = [0.3, 0.6, 1.0]  # -> 4 bins total
+        s_disc = DiscreteLidar(Lidar().ray_stdev, disc_points, zeros(Float64, length(disc_points)+1))
+        m_dlidar = RoombaPOMDP(sensor=s_disc, mdp=RoombaMDP())
 
-    sp = rand(rng, initialstate(m_dlidar))     # RoombaState
-    d = POMDPs.observation(m_dlidar, sp)       # SparseCat over 1:4
+        sp = rand(rng2, initialstate(m_dlidar))
+        d = POMDPs.observation(m_dlidar, sp)  # SparseCat over 1:4
 
-    nobs = RoombaPOMDPs.n_observations(m_dlidar)  # module-qualified
-    @test nobs == length(disc_points) + 1
-    @test collect(POMDPs.observations(m_dlidar)) == collect(1:nobs)
-    @test all(o -> POMDPs.obsindex(m_dlidar, o) == o, support(d))
-    @test isapprox(sum(pdf.(Ref(d), support(d))), 1.0; atol=1e-9)
-    @test all(p -> p ≥ 0.0, pdf.(Ref(d), support(d)))
+        nobs = RoombaPOMDPs.n_observations(m_dlidar)
+        @test nobs == length(disc_points) + 1
+        @test collect(POMDPs.observations(m_dlidar)) == collect(1:nobs)
+        @test all(o -> POMDPs.obsindex(m_dlidar, o) == o, support(d))
+        @test isapprox(sum(pdf.(Ref(d), support(d))), 1.0; atol=1e-9)
+        @test all(p -> p ≥ 0.0, pdf.(Ref(d), support(d)))
 
-    # --- DiscreteLidarPOMDP with DISCRETE state space (Int path) ---
-    # Choose sizes that satisfy x_step==y_step: (num_x_pts-1) = 8/5*(num_y_pts-1).
-    # Example: num_y_pts=6 -> (6-1)=5, so num_x_pts=9.
-    ss_disc = DiscreteRoombaStateSpace(9, 6, 5)
-    mdp_disc = RoombaMDP(sspace=ss_disc)                 # room will be consistent with sspace
-    m_dlidar_disc = RoombaPOMDP(sensor=s_disc, mdp=mdp_disc)
+        # --- DiscreteLidarPOMDP with DISCRETE state space (Int path) ---
+        # Choose sizes that satisfy x_step==y_step: (num_x_pts-1) = 8/5*(num_y_pts-1).
+        # Example: num_y_pts=6 -> (6-1)=5, so num_x_pts=9.
+        ss_disc = DiscreteRoombaStateSpace(9, 6, 5)
+        mdp_disc = RoombaMDP(sspace=ss_disc)
+        m_dlidar_disc = RoombaPOMDP(sensor=s_disc, mdp=mdp_disc)
 
-    si = rand(rng, POMDPs.states(m_dlidar_disc))         # Int state index
-    d2 = POMDPs.observation(m_dlidar_disc, si)
-    nobs2 = RoombaPOMDPs.n_observations(m_dlidar_disc)
-    @test length(support(d2)) == nobs2
-    @test isapprox(sum(pdf.(Ref(d2), support(d2))), 1.0; atol=1e-9)
+        si = rand(rng2, POMDPs.states(m_dlidar_disc))  # Int state index
+        d2 = POMDPs.observation(m_dlidar_disc, si)
+        nobs2 = RoombaPOMDPs.n_observations(m_dlidar_disc)
+        @test length(support(d2)) == nobs2
+        @test isapprox(sum(pdf.(Ref(d2), support(d2))), 1.0; atol=1e-9)
+    end
+
+    @testset "Particle filter update & resampling" begin
+        m = RoombaPOMDP(sensor=Lidar(), mdp=RoombaMDP())
+
+        n = 200
+        b = ParticleCollection([rand(rng, initialstate(m)) for _ in 1:n])
+
+        # uses local systematic resampler (no dependency on ParticleFilters.resample)
+        up = RoombaParticleFilter(m, n, 0.05, 0.05, nothing, rng)
+
+        s = rand(rng, initialstate(m))
+        a = RoombaAct(0.3, 0.0)
+        sp = rand(transition(m, s, a))
+        o = rand(rng, observation(m, sp))  # Float64
+
+        bnew = POMDPs.update(up, b, a, o)
+        @test bnew isa ParticleCollection
+        @test length(collect(particles(bnew))) == n
+        @test any(!isterminal(m, p) for p in particles(bnew))
+    end
 end
