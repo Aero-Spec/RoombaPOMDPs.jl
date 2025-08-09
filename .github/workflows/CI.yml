@@ -12,9 +12,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        version: [ '1.9' ]
-        os: [ macOS-latest ]
-        arch: [ x64 ]
+        version: '1.9'
+        os: macOS-latest
+        arch: x64
 
     steps:
       - uses: actions/checkout@v4
@@ -44,6 +44,5 @@ jobs:
         with:
           files: lcov.info
           slug: Aero-Spec/RoombaPOMDPs.jl
-          # Only needed for private repos; remove if public:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
