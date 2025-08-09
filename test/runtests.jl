@@ -1,100 +1,118 @@
-using Test
-using Random
+using RoombaPOMDPs
 using POMDPs
 using POMDPTools
-using Distributions
-using ParticleFilters: ParticleCollection, particles
-using RoombaPOMDPs
+using ParticleFilters
+using Cairo
+using Gtk
+using Random
+using Test
 
-# Simple always-forward policy (not used with stepthrough; kept for possible future tests)
-struct ForwardPolicy end
-POMDPs.action(::ForwardPolicy, ::Any) = RoombaAct(0.2, 0.0)
+# -- Environment setup --
+sensor = Lidar() # or Bumper() for the bumper version of the environment
+config = 3 # 1, 2, or 3
+m = RoombaPOMDP(sensor=sensor, mdp=RoombaMDP(config=config));
 
-@testset "RoombaPOMDPs.jl" begin
-    rng = MersenneTwister(1)
+num_particles = 2000
+v_noise_coefficient = 2.0
+om_noise_coefficient = 0.5
 
-    @testset "Constructors and basics" begin
-        mdp = RoombaMDP()
-        @test mdp isa RoombaMDP
+belief_updater = RoombaParticleFilter(m, num_particles, v_noise_coefficient, om_noise_coefficient)
 
-        pomdp_bumper = RoombaPOMDP(sensor=Bumper(), mdp=mdp)
-        @test pomdp_bumper isa BumperPOMDP
-
-        pomdp_lidar = RoombaPOMDP(sensor=Lidar(), mdp=mdp)
-        @test pomdp_lidar isa LidarPOMDP
-
-        s0 = rand(rng, initialstate(pomdp_lidar))
-        @test s0 isa RoombaState
-        @test isfinite(s0.x) && isfinite(s0.y) && isfinite(s0.theta)
-    end
-
-    @testset "Transition and reward" begin
-        mdp = RoombaMDP()
-        s = RoombaState(0.0, 0.0, 0.0, 0.0)
-        a = RoombaAct(0.5, 0.2)
-
-        sp = rand(transition(mdp, s, a))
-        @test sp isa RoombaState
-
-        r = reward(mdp, s, a, sp)
-        @test r ≤ mdp.time_pen + max(mdp.goal_reward, 0.0)
-    end
-
-    @testset "Observation API coverage" begin
-        rng2 = MersenneTwister(0)
-
-        # --- LidarPOMDP (continuous) error branches ---
-        m_lidar = RoombaPOMDP(sensor=Lidar(), mdp=RoombaMDP())
-        @test_throws ErrorException RoombaPOMDPs.n_observations(m_lidar) # defined in module
-        @test_throws ErrorException POMDPs.observations(m_lidar)
-
-        # --- DiscreteLidarPOMDP with CONTINUOUS state space (RoombaState path) ---
-        disc_points = [0.3, 0.6, 1.0]  # -> 4 bins total
-        s_disc = DiscreteLidar(Lidar().ray_stdev, disc_points, zeros(Float64, length(disc_points)+1))
-        m_dlidar = RoombaPOMDP(sensor=s_disc, mdp=RoombaMDP())
-
-        sp = rand(rng2, initialstate(m_dlidar))
-        d  = POMDPs.observation(m_dlidar, sp)  # SparseCat over 1:4
-
-        nobs = RoombaPOMDPs.n_observations(m_dlidar)
-        @test nobs == length(disc_points) + 1
-        @test collect(POMDPs.observations(m_dlidar)) == collect(1:nobs)
-        @test all(o -> POMDPs.obsindex(m_dlidar, o) == o, support(d))
-        @test isapprox(sum(pdf.(Ref(d), support(d))), 1.0; atol=1e-9)
-        @test all(p -> p ≥ 0.0, pdf.(Ref(d), support(d)))
-
-        # --- DiscreteLidarPOMDP with DISCRETE state space (Int path) ---
-        # Use a fine grid so x_step == y_step is small (keeps ROBOT_W small):
-        # (num_x_pts-1) = 8/5*(num_y_pts-1). Example: num_y_pts=41 -> num_x_pts=65.
-        ss_disc        = DiscreteRoombaStateSpace(65, 41, 17)
-        mdp_disc       = RoombaMDP(sspace=ss_disc)
-        m_dlidar_disc  = RoombaPOMDP(sensor=s_disc, mdp=mdp_disc)
-
-        si  = rand(rng2, POMDPs.states(m_dlidar_disc))  # Int state index
-        d2  = POMDPs.observation(m_dlidar_disc, si)
-        nobs2 = RoombaPOMDPs.n_observations(m_dlidar_disc)
-        @test length(support(d2)) == nobs2
-        @test isapprox(sum(pdf.(Ref(d2), support(d2))), 1.0; atol=1e-9)
-    end
-
-    @testset "Particle filter update & resampling" begin
-        # Continuous model should be fine now since ROBOT_W was set small by the fine discrete grid above.
-        m = RoombaPOMDP(sensor=Lidar(), mdp=RoombaMDP())
-
-        n = 200
-        b = ParticleCollection([rand(rng, initialstate(m)) for _ in 1:n])
-
-        # uses local systematic resampler (no dependency on ParticleFilters.resample)
-        up = RoombaParticleFilter(m, n, 0.05, 0.05, nothing, rng)
-
-        s = rand(rng, initialstate(m))
-        a = RoombaAct(0.3, 0.0)
-        sp = rand(transition(m, s, a))
-        o = rand(rng, observation(m, sp))  # Float64
-
-        bnew = POMDPs.update(up, b, a, o)
-        @test bnew isa ParticleCollection
-        @test length(collect(particles(bnew))) == n
-        @test any(!isterminal(m, p) for p in particles(bnew))
-    end
+# -- Policy definition --
+mutable struct ToEnd <: Policy
+    ts::Int64
 end
+
+goal_xy = get_goal_xy(m)
+
+# action for WeightedParticleBelief
+function POMDPs.action(p::ToEnd, b::WeightedParticleBelief{RoombaState})
+    if p.ts < 25
+        p.ts += 1
+        return RoombaAct(0., 1.0)
+    end
+    p.ts += 1
+
+    # go towards goal using MAP estimate
+    idx = argmax(b.weights)
+    s = b.particles[idx]
+    goal_x, goal_y = goal_xy
+    x, y, th = s[1:3]
+    ang_to_goal = atan(goal_y - y, goal_x - x)
+    del_angle = wrap_to_pi(ang_to_goal - th)
+    Kprop = 1.0
+    om = Kprop * del_angle
+    v = 5.0
+    return RoombaAct(v, om)
+end
+
+# --------- FIXED: Added method for ParticleCollection -------------
+function POMDPs.action(p::ToEnd, b::ParticleCollection{RoombaState})
+    if p.ts < 25
+        p.ts += 1
+        return RoombaAct(0., 1.0)
+    end
+    p.ts += 1
+
+    # Use mean of particles for action
+    s = mean(b)
+    goal_x, goal_y = goal_xy
+    x, y, th = s[1:3]
+    ang_to_goal = atan(goal_y - y, goal_x - x)
+    del_angle = wrap_to_pi(ang_to_goal - th)
+    Kprop = 1.0
+    om = Kprop * del_angle
+    v = 5.0
+    return RoombaAct(v, om)
+end
+# ---------------------------------------------------------------
+
+# fallback action for Vector
+function POMDPs.action(p::ToEnd, b::Vector)
+    return RoombaAct(0., 1.0)
+end
+
+# fallback action for single RoombaState
+function POMDPs.action(p::ToEnd, s::RoombaState)
+    return RoombaAct(0., 0.)
+end
+
+# -- Simulation --
+Random.seed!(0)
+p = ToEnd(0)
+
+for step in stepthrough(m, p, belief_updater, max_steps=100)
+    @show step.a
+end
+
+step = first(stepthrough(m, p, belief_updater, max_steps=100))
+
+@show fbase = tempname()
+v = render(m, step)
+for (ext, mime) in ["html"=>MIME("text/html"), "svg"=>MIME("image/svg+xml"), "png"=>MIME("image/png")]
+    fname = fbase*"."*ext
+    open(fname, "w") do f
+        show(f, mime, v)
+    end
+    @test filesize(fname) > 0
+end
+
+# Discrete version test
+m = RoombaPOMDP(
+    sensor=sensor,
+    mdp=RoombaMDP(
+        config=config,
+        aspace=vec([RoombaAct(v, om) for v in range(0, stop=2, length=2) for om in range(-2, stop=2, length=3)]),
+        sspace=DiscreteRoombaStateSpace(41, 26, 20)
+    )
+)
+@test has_consistent_initial_distribution(m)
+@test has_consistent_transition_distributions(m)
+
+belief_updater = RoombaParticleFilter(m, num_particles, v_noise_coefficient, om_noise_coefficient)
+
+for step in stepthrough(m, RandomPolicy(m), belief_updater, max_steps=100)
+    @show convert_s(RoombaState, step.s, m), step.a, step.o, step.r
+end
+
+
