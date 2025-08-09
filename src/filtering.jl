@@ -1,10 +1,7 @@
-# src/filtering.jl
-
 using Random
 using StaticArrays
 using POMDPs
 using ParticleFilters: WeightedParticleBelief, ParticleCollection, particles
-# (WeightedParticleBelief isn't strictly needed anymore but harmless to keep.)
 
 # 2D vector type for action noise (v, ω)
 const SVec2 = SVector{2, Float64}
@@ -28,13 +25,13 @@ Fields:
 """
 mutable struct RoombaParticleFilter{M<:RoombaModel,RM,RNG<:AbstractRNG,PMEM} <: Updater
     model::M
-    resampler::RM                # kept for API-compatibility; not used directly
+    resampler::RM                
     n_init::Int
     v_noise_coeff::Float64
     om_noise_coeff::Float64
     rng::RNG
-    _particle_memory::PMEM       # scratch: states
-    _weight_memory::Vector{Float64} # scratch: weights
+    _particle_memory::PMEM      
+    _weight_memory::Vector{Float64} 
 end
 
 # Main constructor
@@ -43,7 +40,7 @@ function RoombaParticleFilter(
     n::Integer,
     v_noise_coeff,
     om_noise_coeff,
-    resampler=nothing,  # optional, ignored internally
+    resampler=nothing,  
     rng::AbstractRNG=Random.GLOBAL_RNG,
 )
     return RoombaParticleFilter(
@@ -58,7 +55,7 @@ function RoombaParticleFilter(
     )
 end
 
-# -------- Local resampler (systematic / low-variance) --------
+
 # Works on plain arrays; returns a new vector of states.
 function _systematic_resample(states::AbstractVector{T}, weights::AbstractVector{<:Real},
                               n::Integer, rng::AbstractRNG) where {T}
