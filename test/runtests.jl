@@ -116,9 +116,9 @@ for step in stepthrough(m, RandomPolicy(m), belief_updater, max_steps=100)
 end
 
 @testset "Extra coverage" begin
-    # wrap_to_pi edge cases
-    @test wrap_to_pi(pi) ≈ pi
-    @test wrap_to_pi(-pi) ≈ pi
+    # wrap_to_pi edge cases (Float64!)
+    @test wrap_to_pi(Float64(π)) ≈ Float64(π)
+    @test wrap_to_pi(-Float64(π)) ≈ Float64(π)
 
     # reward terminal cases
     mdp0 = RoombaMDP()
@@ -127,9 +127,8 @@ end
     @test reward(mdp0, s0, a0, RoombaState(0,0,0,1.0)) == mdp0.time_pen + mdp0.goal_reward
     @test reward(mdp0, s0, a0, RoombaState(0,0,0,-1.0)) == mdp0.time_pen + mdp0.stairs_penalty
 
-    # Discrete state conversion and terminal checks (use a valid grid: 9,6,5)
-    m_disc = RoombaPOMDP(sensor=Lidar(),
-                         mdp=RoombaMDP(sspace=DiscreteRoombaStateSpace(9, 6, 5)))
+    # Discrete state conversion and terminal checks: reuse the discrete model 'm'
+    m_disc = m  # 'm' above is already the discrete POMDP with 41×26×20
     s_any = RoombaState(0,0,0,0)
     si = convert_s(Int, s_any, m_disc)
     @test convert_s(RoombaState, si, m_disc) isa RoombaState
@@ -138,7 +137,7 @@ end
     @test !isterminal(m_disc, 1)
 
     # actionindex error for continuous action space
-    m_cont = RoombaPOMDP()
+    m_cont = RoombaPOMDP()  # default continuous action space
     @test_throws ErrorException actionindex(m_cont, RoombaAct(0.1, 0.0))
 
     # PF all-terminal branch
@@ -146,3 +145,4 @@ end
     term_belief = ParticleCollection([RoombaState(0,0,0,1.0) for _ in 1:20])
     @test_throws ErrorException POMDPs.update(up_small, term_belief, RoombaAct(0,0), 0.0)
 end
+
