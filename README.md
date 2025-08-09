@@ -1,6 +1,6 @@
 # RoombaPOMDPs
 
-[![codecov](https://codecov.io/gh/Aero-Spec/RoombaPOMDPs.jl/graph/badge.svg?token=jriMhZLz9I)](https://codecov.io/gh/Aero-Spec/RoombaPOMDPs.jl)
+[![CI](https://github.com/Aero-Spec/RoombaPOMDPs.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/Aero-Spec/RoombaPOMDPs.jl/actions/workflows/CI.yml)[![codecov](https://codecov.io/gh/Aero-Spec/RoombaPOMDPs.jl/graph/badge.svg?token=jriMhZLz9I)](https://codecov.io/gh/Aero-Spec/RoombaPOMDPs.jl)
 
 Roomba is a localization POMDP problem. A robotic vacuum cleaner, also known as Roomba, finds itself in a familiar room but does not know its exact position. It then tries to locate itself with the observations it receives. Roomba can equip two types of sensors, Lidar or Bumper. 
 With a Lidar sensor, the robot receives a noisy Lidar measurement indicating the distance to obstacles in the front.
